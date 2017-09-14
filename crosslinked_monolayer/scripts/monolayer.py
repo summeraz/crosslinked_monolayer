@@ -79,6 +79,13 @@ class CrosslinkedMonolayer(mb.Compound):
 
     To-do
     -----
+    Bug fixes
+    ---------
+    - Make sure that all chains, through some crosslink network, are attached
+      to the surface.
+
+    Features
+    --------
     - Add routine to visualize the crosslinking network.
     - More robust routine to ensure chains are oriented in the desired direction
     - Check to make sure chain prototype passed as the `chain` argument does not
