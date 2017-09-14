@@ -2,7 +2,7 @@ from __future__ import division
 
 from copy import deepcopy
 import random
-import warnings
+from warnings import warn
 
 import mbuild as mb
 import networkx as nx
@@ -79,11 +79,6 @@ class CrosslinkedMonolayer(mb.Compound):
 
     To-do
     -----
-    Bug fixes
-    ---------
-    - Make sure that all chains, through some crosslink network, are attached
-      to the surface.
-
     Features
     --------
     - Add routine to visualize the crosslinking network.
@@ -215,14 +210,59 @@ class CrosslinkedMonolayer(mb.Compound):
         attachment = nx.get_node_attributes(self.crosslink_graph, 'surface_bound')
         nodes = self.crosslink_graph.nodes()
         for node in nodes:
-            if not attachment[node]:
+            nodes_clone = nodes[:]
+            if (not attachment[node] and
+                    len(self.crosslink_graph.neighbors(node)) < 2):
                 # Find the closest node that does not already have two edges
                 attached = False
                 while not attached:
-                    attached_to = self._find_closest_node(node, nodes, pos)
+                    attached_to = self._find_closest_node(node, nodes_clone, pos)
                     if len(self.crosslink_graph.neighbors(attached_to)) < 2:
                         self.crosslink_graph.add_edge(node, attached_to)
                         attached = True
+                    else:
+                        nodes_clone.remove(attached_to)
+
+        '''
+        Make sure that through the crosslink network, all chains can be traced
+        to an attachment site.
+          1. Loop over all subgraphs
+          2. If subgraph cannot be traced to an attachment site, choose an end of
+             the subgraph and attach a crosslink to the nearest node.
+          3. Re-determine all subgraphs and repeat
+          4. Note: Likely want some sort of distance criterion to make sure the
+                   bonds being drawn aren't super crazy.
+        '''
+        all_connected = False
+        while not all_connected:
+            networks = list(nx.connected_components(self.crosslink_graph))
+            if verbose:
+                print('Found {} total crosslinking networks'.format(len(networks)))
+            if all(any(attachment[site] for site in list(network))
+                    for network in networks):
+                all_connected = True
+            else:
+                if verbose:
+                    print('Not all chains can be traced to a surface site, adding '
+                          'additional crosslinks.')
+                for network in networks:
+                    network = list(network)
+                    if not any([attachment[site] for site in network]):
+                        nodes_clone = nodes[:]
+                        n_neighbors = [len(self.crosslink_graph.neighbors(site))
+                                       for site in network]
+                        site = network[n_neighbors.index(1)]
+                        attached = False
+                        while not attached:
+                            attached_to = self._find_closest_node(site, nodes_clone,
+                                                                  pos)
+                            if (len(self.crosslink_graph.neighbors(attached_to)) < 2
+                                    and attached_to not in network):
+                                self.crosslink_graph.add_edge(site, attached_to)
+                                attached = True
+                            else:
+                                nodes_clone.remove(attached_to)
+                        break
 
     def _create_crosslinks(self):
         """Creates the crosslinks between monolayer chains. """
@@ -337,8 +377,20 @@ if __name__ == "__main__":
     from mbuild.examples import Alkane
     from mbuild.lib.bulk_materials import AmorphousSilica
     from mbuild.recipes import SilicaInterface
+
     surface = mb.SilicaInterface(bulk_silica=AmorphousSilica(), thickness=1.2)
+    '''
+    for spacing in np.arange(0.2, 0.655, 0.005):
+        for seed in (1, 2, 3):
+            xlinked_monolayer = CrosslinkedMonolayer(Alkane(10, cap_end=False),
+                surface, 0.40, max_failed_attempts=1e4, verbose=True,
+                n_chemisorbed=10)
+            xlinked_monolayer.draw_crosslink_network('test.pdf')
+    '''
+
+    '''
     xlinked_monolayer = CrosslinkedMonolayer(Alkane(10, cap_end=False), surface,
         0.40, max_failed_attempts=1e4, verbose=True)
     xlinked_monolayer.save('test.mol2')
     xlinked_monolayer.draw_crosslink_network('test.pdf')
+    '''
