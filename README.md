@@ -18,7 +18,7 @@ Once 10000 (or a different, user-defined number) consecutive failed insertion at
 the monolayer is said to be at its maximum chain density.
 
 After all monolayer chains have been added to the system, the crosslink network is determined.
-This represents an NP-hard problem, similar to the Multi-Depot Vehicle Routing Problem (MDVRP).
+This represents a problem similar to a "pickup-only" variant of the Multi-Depot Vehicle Routing Problem (MDVRP).
 Here, the rules of our problem are that all chains must be traced through the crosslink
 network back to a surface attachment site. The number of crosslink "clusters" or "strings"
 is not defined. To solve this, the recipe first adds a crosslink between each chain and its
