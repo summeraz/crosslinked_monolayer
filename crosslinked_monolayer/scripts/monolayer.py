@@ -79,6 +79,10 @@ class CrosslinkedMonolayer(mb.Compound):
 
     To-do
     -----
+    Bug fixes
+    ---------
+    - Add functionality to backfill vacant sites.
+
     Features
     --------
     - Add routine to visualize the crosslinking network.
@@ -112,7 +116,7 @@ class CrosslinkedMonolayer(mb.Compound):
             verbose)
         self._add_crosslinked_chains(chain, spacing, chain_port_name,
             max_failed_attempts, verbose)
-        self._determine_crosslink_network()
+        self._determine_crosslink_network(verbose)
         self._create_crosslinks()
 
     def _add_chemisorbed_chains(self, chain, spacing, n_chemisorbed,
@@ -203,7 +207,7 @@ class CrosslinkedMonolayer(mb.Compound):
                     print('{} consecutive failed insertions (max {})'
                           ''.format(failed_attempts, int(max_failed_attempts)))
 
-    def _determine_crosslink_network(self):
+    def _determine_crosslink_network(self, verbose):
         """Determine crosslinks between monolayer chains.
         """
         pos = nx.get_node_attributes(self.crosslink_graph, 'pos')
@@ -373,12 +377,33 @@ class CrosslinkedMonolayer(mb.Compound):
         plt.savefig(filename)
 
 if __name__ == "__main__":
-    #from crosslinked_monolayer.scripts import Alkane
+    import time
     from mbuild.examples import Alkane
     from mbuild.lib.bulk_materials import AmorphousSilica
     from mbuild.recipes import SilicaInterface
 
-    surface = mb.SilicaInterface(bulk_silica=AmorphousSilica(), thickness=1.2)
+    seeds = []
+    max_attempts = []
+    chain_no = []
+    times = []
+    for seed in [1, 2, 3]:
+        for mfa in [100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000]:
+            surface = mb.SilicaInterface(bulk_silica=AmorphousSilica(),
+                thickness=1.2, seed=seed)
+            t0 = time.time()
+            xlinked_monolayer = CrosslinkedMonolayer(Alkane(10, cap_end=False),
+                surface, 0.40, seed=seed, max_failed_attempts=mfa, verbose=False)
+            t1 = time.time()
+            total_chains = (len(xlinked_monolayer['crosslinked_chain']) +
+                            len(xlinked_monolayer['chemisorbed_chain']))
+            seeds.append(seed)
+            max_attempts.append(mfa)
+            chain_no.append(total_chains)
+            times.append(t1-t0)
+            np.savetxt('failed_attempts.txt',
+                np.column_stack((seeds, max_attempts, chain_no, times)),
+                header='seed\tmax_attempts\tchain_number\ttime')
+
     '''
     for spacing in np.arange(0.2, 0.655, 0.005):
         for seed in (1, 2, 3):
