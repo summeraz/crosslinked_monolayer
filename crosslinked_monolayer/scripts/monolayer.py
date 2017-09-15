@@ -63,7 +63,7 @@ class CrosslinkedMonolayer(mb.Compound):
         Seed for the random number generator 
     chain_port_name : string, optional, default='down'
         Name of the port on `chain` to be used to create bonds to the surface.
-    max_failed_attempts : int, optional, default=1e4
+    max_failed_attempts : int, optional, default=2.5e3
         The number of consecutive failed insertion attempts for crosslinked chains
         before the monolayer is considered "complete" (i.e. that no additional
         locations exist where chains could be placed).
@@ -94,7 +94,7 @@ class CrosslinkedMonolayer(mb.Compound):
 
     """
     def __init__(self, chain, surface, spacing, n_chemisorbed=None, seed=12345,
-                 chain_port_name='down', max_failed_attempts=1e4, verbose=False):
+                 chain_port_name='down', max_failed_attempts=2.5e3, verbose=False):
         super(CrosslinkedMonolayer, self).__init__()
 
         random.seed(seed)
