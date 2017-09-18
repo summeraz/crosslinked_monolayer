@@ -61,6 +61,9 @@ class CrosslinkedMonolayer(mb.Compound):
         The exact number of chains that should be chemisorbed to the surface.
         If `None`, which is the default, then the number of chemisorbed chains is
         determined from `spacing`.
+    max_n_chains : int, optional, default=None
+        The maximum number of total chains in the monolayer. If `None`, which is the
+        default, then the number of total chains is determined form `spacing`.
     seed : int, optional, default=12345
         Seed for the random number generator 
     chain_port_name : string, optional, default='down'
@@ -93,8 +96,9 @@ class CrosslinkedMonolayer(mb.Compound):
 
     """
     def __init__(self, chain, surface, spacing, backfill=None, n_chemisorbed=None,
-                 seed=12345, chain_port_name='down', backfill_port_name='down',
-                 max_failed_attempts=2.5e3, verbose=False):
+                 max_n_chains=None, seed=12345, chain_port_name='down',
+                 backfill_port_name='down', max_failed_attempts=2.5e3,
+                 verbose=False):
         super(CrosslinkedMonolayer, self).__init__()
 
         random.seed(seed)
@@ -112,23 +116,28 @@ class CrosslinkedMonolayer(mb.Compound):
         chain.add(chain['silicon']['down'], chain_port_name, containment=False,
             replace=True)
 
-        self._add_chemisorbed_chains(chain, spacing, n_chemisorbed, chain_port_name,
-            verbose)
-        self._add_crosslinked_chains(chain, spacing, chain_port_name,
+        self._add_chemisorbed_chains(chain, spacing, n_chemisorbed, max_n_chains,
+            chain_port_name, verbose)
+        self._add_crosslinked_chains(chain, spacing, max_n_chains, chain_port_name,
             max_failed_attempts, verbose)
         self._determine_crosslink_network(verbose)
         self._create_crosslinks()
         self._add_backfill(backfill, backfill_port_name)
 
-    def _add_chemisorbed_chains(self, chain, spacing, n_chemisorbed,
+    def _add_chemisorbed_chains(self, chain, spacing, n_chemisorbed, max_n_chains,
                                 chain_port_name, verbose):
         """Attach chains to the surface...
         """
         available_sites = np.array(self['surface'].available_ports())
-        if not n_chemisorbed:
-            max_chains = len(available_sites)
-        else:
+        if n_chemisorbed and max_n_chains and max_n_chains < n_chemisorbed:
+            raise Exception('Cannot specify both `max_n_chains` less than '
+                            '`n_chemisorbed`!')
+        elif n_chemisorbed:
             max_chains = n_chemisorbed
+        elif max_n_chains:
+            max_chains = max_n_chains
+        else:
+            max_chains = len(available_sites)
         added_chains = 0
         while len(available_sites) > 0 and added_chains < max_chains:
             binding_site = random.choice(available_sites)
@@ -157,7 +166,7 @@ class CrosslinkedMonolayer(mb.Compound):
             warn('Only adding {} chemisorbed chains; however, additional sites are '
                  'available!'.format(n_chemisorbed))
 
-    def _add_crosslinked_chains(self, chain, spacing, chain_port_name,
+    def _add_crosslinked_chains(self, chain, spacing, max_n_chains, chain_port_name,
                                 max_failed_attempts, verbose):
         """Add crosslinked chains... """
         # Add hydroxyl to prototype for crosslinked chain
@@ -168,9 +177,15 @@ class CrosslinkedMonolayer(mb.Compound):
 
         surface_level = max(self['surface'].xyz[:,2])
 
+        
+        total_chains = len(self['chemisorbed_chain'])
+        if max_n_chains:
+            max_chains = max_n_chains
+        else:
+            max_chains = 1e8
         failed_attempts = 0
         # Keep adding chains until too many consecutive failed attempts
-        while failed_attempts < max_failed_attempts:
+        while failed_attempts < max_failed_attempts and total_chains < max_chains:
             # Choose random site in the xy plane
             site = np.append(np.random.rand(1,2)[0], 0.0) * self.periodicity
 
@@ -197,11 +212,11 @@ class CrosslinkedMonolayer(mb.Compound):
                 new_chain_si = list(new_chain.particles_by_name('Si'))[0]
                 self.crosslink_graph.add_node(new_chain_si, pos=(site[0], site[1]),
                     surface_bound=False)
+                total_chains = len(self['crosslinked_chain']) + \
+                    len(self['chemisorbed_chain'])
                 if verbose:
                     print('Added crosslinked chain {} ({} total chains)'
-                          ''.format(len(self['crosslinked_chain']),
-                          (len(self['crosslinked_chain']) +
-                          len(self['chemisorbed_chain']))))
+                          ''.format(len(self['crosslinked_chain']), total_chains))
             else:
                 failed_attempts += 1
                 if verbose and failed_attempts % 100 == 0:
@@ -394,7 +409,13 @@ if __name__ == "__main__":
     surface = mb.SilicaInterface(bulk_silica=AmorphousSilica(),
         thickness=1.2, seed=seed)
     xlinked_monolayer = CrosslinkedMonolayer(Alkane(10, cap_end=False), surface,
-        0.42, backfill=H(), max_failed_attempts=1e2, verbose=True,
-        backfill_port_name='up')
-    xlinked_monolayer.save('test.mol2')
-    xlinked_monolayer.draw_crosslink_network('test.pdf')
+        0.6, backfill=H(), max_failed_attempts=1e2, verbose=True,
+        backfill_port_name='up', n_chemisorbed=10, max_n_chains=20)
+
+    from crosslinked_monolayer import get_forcefield
+    xlinked_monolayer.save('test.top',
+                           forcefield_files=get_forcefield('oplsaa-xlink'),
+                           overwrite=True)
+    xlinked_monolayer.save('test.gro', overwrite=True)
+    #xlinked_monolayer.save('test.mol2')
+    #xlinked_monolayer.draw_crosslink_network('test.pdf')
