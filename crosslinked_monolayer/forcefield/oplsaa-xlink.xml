@@ -1,0 +1,85 @@
+<!--
+ OPLS forcefield for crosslinked alkylsilanes
+
+ NOTE: This is a copy of the OPLSaa_alkylsilanes forcefield located at
+ https://github.com/summeraz/OPLSaa_alkylsilanes, that contains additional
+ parameters for crosslinking oxygens. These additional parameters feature the same
+ VDW parameters as the silica oxygens, however, charges have been adjusted to ensure
+ charge neutrality. The remaining forcefield details were copied directly from the
+ original OPLSaa_alkylsilanes forcefield.
+ 
+ Source: Lorentz, Webb, Stevens, Chandross, and Grest, Tribology Letters, 19, 2005 pp 93-98 DOI:10.1007/s11249-005-5085-4
+
+ Forcefield file initially created on 14 September 2017 by A.Z. Summers
+ 
+ Additional Notes
+ - The original parameters are defined as kcal/mol, this file uses kJ/mol; a conversion factor of 4.184 was used,
+    consistent with openMM. 
+ - PI is defined as 3.141592653589 for conversion to radians, consistent with openMM.
+ - Conversion from OPLS-style dihedrals to RB follow the formulas detailed in the GROMACS manual. Specifically,
+   OPLS form: 
+     0.5*(F1*(1+cos(phi))+ F2*(1-cos(2phi))+ F3*(1+cos(3phi))+F4*(1-cos(4phi)))
+   RB mapping:
+     c0 = F2+0.5*(F1+F3)
+     c1 = 0.5*(-F1+3F3)
+     c2 = -F2 + 4F4
+     c3 = -2F3
+     c4 = -4F4
+     c5 = 0
+-->
+
+ <ForceField>
+ <AtomTypes>
+    <Type name="opls_135" class="CT" element="C" mass="12.01100" def="[C;X4](C)(H)(H)H" desc="alkane CH3" overrides='opls_136' doi="10.1021/ja9621760"/>
+    <Type name="opls_136" class="CT" element="C" mass="12.01100" def="[C;X4](C)(H)H" desc="alkane CH2" doi="10.1021/ja9621760"/>
+    <Type name="opls_140" class="HC" element="H" mass="1.00800" def="H[C;X4]" desc="alkane H" doi="10.1021/ja9621760"/>
+    <Type name="opls_1001" class="O" element="O" mass="15.9994" def="O[Si;%opls_1002]" desc="bulk silica O" doi="10.1007/s11249-005-5085-4"/>
+    <Type name="opls_1002" class="SI" element="Si" mass="28.0855" def="Si" desc="bulk silica Si" doi="10.1007/s11249-005-5085-4"/>
+    <Type name="opls_1003" class="SI" element="Si" mass="28.0855" def="Si(O)(O)(O)C" overrides="opls_1002" desc="silane Si" doi="10.1007/s11249-005-5085-4"/>
+    <Type name="opls_1004" class="O" element="O" mass="15.9994" def="O(H)SiC" desc="silane hydroxyl O" overrides="opls_1001,opls_1007" doi="10.1021/ja9621760"/>
+    <Type name="opls_1005" class="HO" element="H" mass="1.00800" def="HOSiC" desc="silane hydroxyl H" overrides="opls_1008" doi="10.1021/ja9621760"/>
+    <Type name="opls_1006" class="O" element="O" mass="15.9994" def="[O;X2]([Si;%opls_1002])[Si;%opls_1003]" desc="bridging O to silane" overrides="opls_1001" doi="10.1007/s11249-005-5085-4"/>
+    <Type name="opls_1007" class="O" element="O" mass="15.9994" def="[O;X2]([Si;%opls_1002])H" desc="bridging O to hydroxyl" overrides="opls_1001" doi="10.1007/s11249-005-5085-4"/>
+    <Type name="opls_1008" class="HO" element="H" mass="1.00800" def="HO[Si;%opls_1002]" desc="capping H"/> <!--Charge has been adjusted from original source to maintain charge neutrality-->
+    <Type name="opls_1009" class="OG" element="O" mass="15.9994" def="[O;X2]([Si;%opls_1003])[Si;%opls_1003]" desc="crosslinking O" overrides="opls_1001,opls_1006" doi="10.1007/s11249-005-5085-4"/> <!--Charge has been adjusted from original source to maintain charge neutrality-->
+ </AtomTypes>
+ <HarmonicBondForce>
+    <Bond class1="CT" class2="CT" length="0.1529" k="224262.4"/> <!--Needs verifying!-->
+    <Bond class1="O" class2="HO" length="0.0945" k="462750.4"/> <!--Needs verifying!-->
+    <Bond class1="CT" class2="HC" length="0.109" k="284512.0"/> <!--Needs verifying!-->
+    <Bond class1="CT" class2="SI" length="0.185" k="167360.0"/> <!--doi="10.1007/s11249-005-5085-4"-->
+    <Bond class1="SI" class2="O" length="0.165" k="251040.0"/> <!--doi="10.1007/s11249-005-5085-4"-->
+ </HarmonicBondForce>
+ <HarmonicAngleForce>
+    <Angle class1="CT" class2="CT" class3="CT" angle="1.966986067" k="488.273"/> <!--Needs verifying!-->
+    <Angle class1="CT" class2="CT" class3="HC" angle="1.93207948196" k="313.8"/> <!--Needs verifying!-->
+    <Angle class1="HC" class2="CT" class3="HC" angle="1.88146493365" k="276.144"/> <!--Needs verifying!-->
+    <Angle class1="CT" class2="CT" class3="SI" angle="2.094395102" k="254.973"/> <!--doi="10.1007/s11249-005-5085-4"-->
+    <Angle class1="HC" class2="CT" class3="SI" angle="1.932079" k="313.80"/> <!--Needs verifying!-->
+    <Angle class1="CT" class2="SI" class3="O" angle="1.745329252" k="502.08"/> <!--10.1007/s11249-005-5085-4-->
+    <Angle class1="SI" class2="O" class3="HO" angle="2.144800211" k="198.961"/> <!--10.1007/s11249-005-5085-4-->
+    <Angle class1="SI" class2="O" class3="SI" angle="2.530727415" k="165.92"/> <!--10.1007/s11249-005-5085-4-->
+    <Angle class1="O" class2="SI" class3="O" angle="1.919862177" k="502.08"/> <!--10.1007/s11249-005-5085-4-->
+ </HarmonicAngleForce>
+ <RBTorsionForce>
+    <Proper class1="CT" class2="CT" class3="CT" class4="CT" c0="2.9288" c1="-1.4644" c2="0.2092" c3="-1.6736" c4="0.0" c5="0.0"/>
+    <Proper class1="CT" class2="CT" class3="CT" class4="HC" c0="0.6276" c1="1.8828" c2="0.0" c3="-2.5104" c4="0.0" c5="0.0"/>
+    <Proper class1="HC" class2="CT" class3="CT" class4="HC" c0="0.6276" c1="1.8828" c2="0.0" c3="-2.5104" c4="0.0" c5="0.0"/>
+    <Proper class1="SI" class2="" class3="" class4="" c0="0.0" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0"/>
+    <Proper class1="" class2="SI" class3="" class4="" c0="0.0" c1="0.0" c2="0.0" c3="0.0" c4="0.0" c5="0.0"/>
+ </RBTorsionForce>
+ <NonbondedForce coulomb14scale="0.5" lj14scale="0.5">
+     <Atom type="opls_135" charge="-0.18" sigma="0.35" epsilon="0.276144"/>
+     <Atom type="opls_136" charge="-0.12" sigma="0.35" epsilon="0.276144"/>
+     <Atom type="opls_140" charge="0.06" sigma="0.25" epsilon="0.12552"/>
+     <Atom type="opls_1001" charge="-0.43" sigma="0.3" epsilon="0.71128"/>
+     <Atom type="opls_1002" charge="0.86" sigma="0.4" epsilon="0.4184"/>
+     <Atom type="opls_1003" charge="0.745" sigma="0.4" epsilon="0.4184"/>
+     <Atom type="opls_1004" charge="-0.683" sigma="0.312" epsilon="0.71128"/>
+     <Atom type="opls_1005" charge="0.418" sigma="0.0" epsilon="0.0"/>
+     <Atom type="opls_1006" charge="-0.215" sigma="0.3" epsilon="0.71128"/>
+     <Atom type="opls_1007" charge="-0.215" sigma="0.3" epsilon="0.71128"/>
+     <Atom type="opls_1008" charge="0.215" sigma="0.0" epsilon="0.0"/>
+     <Atom type="opls_1009" charge="-0.48" sigma="0.3" epsilon="0.71128"/>
+ </NonbondedForce>
+</ForceField>
