@@ -385,44 +385,10 @@ class CrosslinkedMonolayer(mb.Compound):
         plt.savefig(filename)
 
 if __name__ == "__main__":
-    import time
     from mbuild.examples import Alkane
     from mbuild.lib.atoms import H
     from mbuild.lib.bulk_materials import AmorphousSilica
     from mbuild.recipes import SilicaInterface
-
-    '''
-    seeds = []
-    max_attempts = []
-    chain_no = []
-    times = []
-    for seed in [1, 2, 3]:
-        for mfa in [100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000]:
-            surface = mb.SilicaInterface(bulk_silica=AmorphousSilica(),
-                thickness=1.2, seed=seed)
-            t0 = time.time()
-            xlinked_monolayer = CrosslinkedMonolayer(Alkane(10, cap_end=False),
-                surface, 0.40, seed=seed, max_failed_attempts=mfa, verbose=False)
-            t1 = time.time()
-            total_chains = (len(xlinked_monolayer['crosslinked_chain']) +
-                            len(xlinked_monolayer['chemisorbed_chain']))
-            seeds.append(seed)
-            max_attempts.append(mfa)
-            chain_no.append(total_chains)
-            times.append(t1-t0)
-            np.savetxt('failed_attempts.txt',
-                np.column_stack((seeds, max_attempts, chain_no, times)),
-                header='seed\tmax_attempts\tchain_number\ttime')
-    '''
-
-    '''
-    for spacing in np.arange(0.2, 0.655, 0.005):
-        for seed in (1, 2, 3):
-            xlinked_monolayer = CrosslinkedMonolayer(Alkane(10, cap_end=False),
-                surface, 0.40, max_failed_attempts=1e4, verbose=True,
-                n_chemisorbed=10)
-            xlinked_monolayer.draw_crosslink_network('test.pdf')
-    '''
 
     seed = 12345
     surface = mb.SilicaInterface(bulk_silica=AmorphousSilica(),
