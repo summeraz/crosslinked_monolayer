@@ -55,6 +55,8 @@ class CrosslinkedMonolayer(mb.Compound):
     spacing : float
         Minimum spacing (in nm) allowed between chains. This should usually be the
         Van der Waals diameter of the chain (e.g. 0.42nm for alkylsilanes)
+    backfill : mb.Compound, optional, default=None
+        Compound to place at vacant surface sites.
     n_chemisorbed : int, optional, default=None
         The exact number of chains that should be chemisorbed to the surface.
         If `None`, which is the default, then the number of chemisorbed chains is
@@ -62,7 +64,9 @@ class CrosslinkedMonolayer(mb.Compound):
     seed : int, optional, default=12345
         Seed for the random number generator 
     chain_port_name : string, optional, default='down'
-        Name of the port on `chain` to be used to create bonds to the surface.
+        Name of the port on `chain` to be used to create bonds to the surface
+    backfill_port_name : string, optional, default='down'
+        Name of the port on `backfill` to be used to create bonds to the surface
     max_failed_attempts : int, optional, default=2.5e3
         The number of consecutive failed insertion attempts for crosslinked chains
         before the monolayer is considered "complete" (i.e. that no additional
@@ -79,13 +83,8 @@ class CrosslinkedMonolayer(mb.Compound):
 
     To-do
     -----
-    Bug fixes
-    ---------
-    - Add functionality to backfill vacant sites.
-
     Features
     --------
-    - Add routine to visualize the crosslinking network.
     - More robust routine to ensure chains are oriented in the desired direction
     - Check to make sure chain prototype passed as the `chain` argument does not
       already contain a silane (could be as easy as seeing if the chain contains
@@ -93,8 +92,9 @@ class CrosslinkedMonolayer(mb.Compound):
     - Provide updated chain density in verbose mode
 
     """
-    def __init__(self, chain, surface, spacing, n_chemisorbed=None, seed=12345,
-                 chain_port_name='down', max_failed_attempts=2.5e3, verbose=False):
+    def __init__(self, chain, surface, spacing, backfill=None, n_chemisorbed=None,
+                 seed=12345, chain_port_name='down', backfill_port_name='down',
+                 max_failed_attempts=2.5e3, verbose=False):
         super(CrosslinkedMonolayer, self).__init__()
 
         random.seed(seed)
@@ -118,6 +118,7 @@ class CrosslinkedMonolayer(mb.Compound):
             max_failed_attempts, verbose)
         self._determine_crosslink_network(verbose)
         self._create_crosslinks()
+        self._add_backfill(backfill, backfill_port_name)
 
     def _add_chemisorbed_chains(self, chain, spacing, n_chemisorbed,
                                 chain_port_name, verbose):
@@ -329,6 +330,13 @@ class CrosslinkedMonolayer(mb.Compound):
                  if a_node != node else 1000.0 for a_node in nodes]
         return nodes[np.argmin(dists)]
 
+    def _add_backfill(self, backfill, backfill_port_name):
+        for port in self['surface'].available_ports():
+            backfill_clone = mb.clone(backfill)
+            mb.force_overlap(backfill_clone, backfill_clone[backfill_port_name],
+                             port)
+            self.add(backfill_clone)
+
     def draw_crosslink_network(self, filename):
         import matplotlib
         matplotlib.use('Agg')
@@ -379,9 +387,11 @@ class CrosslinkedMonolayer(mb.Compound):
 if __name__ == "__main__":
     import time
     from mbuild.examples import Alkane
+    from mbuild.lib.atoms import H
     from mbuild.lib.bulk_materials import AmorphousSilica
     from mbuild.recipes import SilicaInterface
 
+    '''
     seeds = []
     max_attempts = []
     chain_no = []
@@ -403,6 +413,7 @@ if __name__ == "__main__":
             np.savetxt('failed_attempts.txt',
                 np.column_stack((seeds, max_attempts, chain_no, times)),
                 header='seed\tmax_attempts\tchain_number\ttime')
+    '''
 
     '''
     for spacing in np.arange(0.2, 0.655, 0.005):
@@ -413,9 +424,11 @@ if __name__ == "__main__":
             xlinked_monolayer.draw_crosslink_network('test.pdf')
     '''
 
-    '''
+    seed = 12345
+    surface = mb.SilicaInterface(bulk_silica=AmorphousSilica(),
+        thickness=1.2, seed=seed)
     xlinked_monolayer = CrosslinkedMonolayer(Alkane(10, cap_end=False), surface,
-        0.40, max_failed_attempts=1e4, verbose=True)
+        0.42, backfill=H(), max_failed_attempts=1e2, verbose=True,
+        backfill_port_name='up')
     xlinked_monolayer.save('test.mol2')
     xlinked_monolayer.draw_crosslink_network('test.pdf')
-    '''
