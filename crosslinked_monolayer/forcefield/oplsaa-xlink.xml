@@ -41,7 +41,7 @@
     <Type name="opls_1006" class="O" element="O" mass="15.9994" def="[O;X2]([Si;%opls_1002])[Si;%opls_1003]" desc="bridging O to silane" overrides="opls_1001" doi="10.1007/s11249-005-5085-4"/>
     <Type name="opls_1007" class="O" element="O" mass="15.9994" def="[O;X2]([Si;%opls_1002])H" desc="bridging O to hydroxyl" overrides="opls_1001" doi="10.1007/s11249-005-5085-4"/>
     <Type name="opls_1008" class="HO" element="H" mass="1.00800" def="HO[Si;%opls_1002]" desc="capping H"/> <!--Charge has been adjusted from original source to maintain charge neutrality-->
-    <Type name="opls_1009" class="OG" element="O" mass="15.9994" def="[O;X2]([Si;%opls_1003])[Si;%opls_1003]" desc="crosslinking O" overrides="opls_1001,opls_1006" doi="10.1007/s11249-005-5085-4"/> <!--Charge has been adjusted from original source to maintain charge neutrality-->
+    <Type name="opls_1009" class="O" element="O" mass="15.9994" def="[O;X2]([Si;%opls_1003])[Si;%opls_1003]" desc="crosslinking O" overrides="opls_1001,opls_1006" doi="10.1007/s11249-005-5085-4"/> <!--Charge has been adjusted from original source to maintain charge neutrality-->
  </AtomTypes>
  <HarmonicBondForce>
     <Bond class1="CT" class2="CT" length="0.1529" k="224262.4"/> <!--Needs verifying!-->
