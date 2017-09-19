@@ -1,2 +1,2 @@
 from crosslinked_monolayer.scripts.alkane import Alkane
-from crosslinked_monolayer.scripts.alkylsilane import Alkylsilane
+from crosslinked_monolayer.scripts.monolayer import CrosslinkedMonolayer
