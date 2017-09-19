@@ -2,6 +2,7 @@ from __future__ import division
 
 from copy import deepcopy
 import random
+from random import shuffle
 from warnings import warn
 
 import mbuild as mb
@@ -229,6 +230,9 @@ class CrosslinkedMonolayer(mb.Compound):
         pos = nx.get_node_attributes(self.crosslink_graph, 'pos')
         attachment = nx.get_node_attributes(self.crosslink_graph, 'surface_bound')
         nodes = self.crosslink_graph.nodes()
+        nodes.sort(key=lambda node: self.min_periodic_distance(np.zeros(3),
+            np.array([pos[node][0], pos[node][1], 0.0])))
+        shuffle(nodes)
         for node in nodes:
             nodes_clone = nodes[:]
             if (not attachment[node] and
