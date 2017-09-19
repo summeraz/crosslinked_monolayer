@@ -397,6 +397,11 @@ class CrosslinkedMonolayer(mb.Compound):
                     linewidth=1.0)
         plt.xlim(0.0, self.periodicity[0])
         plt.ylim(0.0, self.periodicity[1])
+        plt.xlabel('x, nm', fontweight='bold', fontsize=20)
+        plt.ylabel('y, nm', fontweight='bold', fontsize=20)
+        plt.tick_params(axis='both', which='major', labelsize=18)
+        plt.axes().set_aspect('equal', 'box')
+        plt.tight_layout()
         plt.savefig(filename)
 
 if __name__ == "__main__":
@@ -409,13 +414,12 @@ if __name__ == "__main__":
     surface = mb.SilicaInterface(bulk_silica=AmorphousSilica(),
         thickness=1.2, seed=seed)
     xlinked_monolayer = CrosslinkedMonolayer(Alkane(10, cap_end=False), surface,
-        0.6, backfill=H(), max_failed_attempts=1e2, verbose=True,
-        backfill_port_name='up', n_chemisorbed=10, max_n_chains=20)
+        0.42, backfill=H(), max_failed_attempts=2.5e3, verbose=True,
+        backfill_port_name='up', n_chemisorbed=25, max_n_chains=100)
+    xlinked_monolayer.draw_crosslink_network('test.pdf')
 
     from crosslinked_monolayer import get_forcefield
     xlinked_monolayer.save('test.top',
                            forcefield_files=get_forcefield('oplsaa-xlink'),
                            overwrite=True)
     xlinked_monolayer.save('test.gro', overwrite=True)
-    #xlinked_monolayer.save('test.mol2')
-    #xlinked_monolayer.draw_crosslink_network('test.pdf')
