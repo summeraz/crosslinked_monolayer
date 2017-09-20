@@ -243,7 +243,11 @@ class CrosslinkedMonolayer(mb.Compound):
                     attached_to = self._find_closest_node(node, nodes_clone, pos)
                     if len(self.crosslink_graph.neighbors(attached_to)) < 2:
                         self.crosslink_graph.add_edge(node, attached_to)
-                        attached = True
+                        if len(nx.cycle_basis(self.crosslink_graph)) > 0:
+                            self.crosslink_graph.remove_edge(node, attached_to)
+                            nodes_clone.remove(attached_to)
+                        else:
+                            attached = True
                     else:
                         nodes_clone.remove(attached_to)
 
