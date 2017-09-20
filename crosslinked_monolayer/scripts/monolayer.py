@@ -89,6 +89,13 @@ class CrosslinkedMonolayer(mb.Compound):
     -----
     Features
     --------
+    - Alter functionality such that the number of chemisorbed chains can be
+      explicitly set by `n_chemisorbed` (rather than providing an upper bound)
+    - Replace algorithm for adding crosslinked chains with one that utilizes a
+      Voronoi tessellation.
+    - If `max_n_chains` would yield steric overlap, find locations for additional
+      crosslinked chains using a Voronoi tessellation. Provide a warning that
+      steric overlaps exist (and provide what this minimum distance is).
     - More robust routine to ensure chains are oriented in the desired direction
     - Check to make sure chain prototype passed as the `chain` argument does not
       already contain a silane (could be as easy as seeing if the chain contains
@@ -411,6 +418,26 @@ class CrosslinkedMonolayer(mb.Compound):
         plt.axes().set_aspect('equal', 'box')
         plt.tight_layout()
         plt.savefig(filename)
+
+    def draw_voronoi(self, filename):
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt 
+        from scipy.spatial import Voronoi, voronoi_plot_2d
+        pos = nx.get_node_attributes(self.crosslink_graph, 'pos')
+        pos = [val for val in pos.values()]
+        x_length = self.periodicity[0]
+        y_length = self.periodicity[1]
+        pos_images = []
+        for x_image in [-1, 0, 1]:
+            for y_image in [-1, 0, 1]:
+                for position in pos:
+                    new_position = [position[0] + x_length * x_image,
+                                    position[1] + y_length * y_image]
+                    pos_images.append(new_position) 
+        vor = Voronoi(pos_images)
+        voronoi_plot_2d(vor)
+        self.draw_crosslink_network(filename)
 
 if __name__ == "__main__":
     from mbuild.examples import Alkane
