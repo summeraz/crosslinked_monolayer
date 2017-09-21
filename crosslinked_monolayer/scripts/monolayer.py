@@ -8,6 +8,7 @@ from warnings import warn
 import mbuild as mb
 import networkx as nx
 import numpy as np
+from scipy.spatial import Voronoi, voronoi_plot_2d
 
 from crosslinked_monolayer.lib import Hydroxyl, Silicon
 
@@ -105,8 +106,7 @@ class CrosslinkedMonolayer(mb.Compound):
     """
     def __init__(self, chain, surface, spacing, backfill=None, n_chemisorbed=None,
                  max_n_chains=None, seed=12345, chain_port_name='down',
-                 backfill_port_name='down', max_failed_attempts=2.5e3,
-                 verbose=False):
+                 backfill_port_name='down', verbose=False):
         super(CrosslinkedMonolayer, self).__init__()
 
         random.seed(seed)
@@ -120,7 +120,6 @@ class CrosslinkedMonolayer(mb.Compound):
         silicon = Silicon()
         mb.force_overlap(silicon, silicon['up'], chain[chain_port_name])
         chain.add(silicon, 'silicon')
-        #mb.force_overlap(chain, chain[chain_port_name], silicon['up'])
         chain.add(chain['silicon']['down'], chain_port_name, containment=False,
             replace=True)
 
@@ -185,18 +184,16 @@ class CrosslinkedMonolayer(mb.Compound):
 
         surface_level = max(self['surface'].xyz[:,2])
 
-        
         total_chains = len(self['chemisorbed_chain'])
         if max_n_chains:
             max_chains = max_n_chains
         else:
             max_chains = 1e8
-        failed_attempts = 0
+        complete = False
         # Keep adding chains until too many consecutive failed attempts
-        while failed_attempts < max_failed_attempts and total_chains < max_chains:
-            # Choose random site in the xy plane
-            site = np.append(np.random.rand(1,2)[0], 0.0) * self.periodicity
-
+        while not complete and total_chains < max_chains:
+            vertices = self._get_voronoi_vertices()
+            
             # Determine locations of chains already in the monolayer
             chemisorbed_chain_locations = np.array([chain.pos for chain
                                                     in self['chemisorbed_chain']])
@@ -209,8 +206,14 @@ class CrosslinkedMonolayer(mb.Compound):
             except UnboundLocalError:
                 chain_locations = chemisorbed_chain_locations
             chain_locations[:,2] = 0
-            dists = [self.min_periodic_distance(site, loc) for loc in chain_locations]
-            if min(dists) > spacing:
+            dists = []
+            for vertex in vertices:
+                min_dist = np.min([self.min_periodic_distance([vertex[0],vertex[1],0.0], loc) for loc in chain_locations])
+                dists.append(min_dist)
+            if np.max(dists) > spacing:
+                site_2d = vertices[np.argmax(dists)]
+                site = np.array([site_2d[0], site_2d[1], 0.0])
+
                 failed_attempts = 0
                 new_chain = mb.clone(chain)
                 new_chain.translate_to(site)
@@ -226,10 +229,7 @@ class CrosslinkedMonolayer(mb.Compound):
                     print('Added crosslinked chain {} ({} total chains)'
                           ''.format(len(self['crosslinked_chain']), total_chains))
             else:
-                failed_attempts += 1
-                if verbose and failed_attempts % 100 == 0:
-                    print('{} consecutive failed insertions (max {})'
-                          ''.format(failed_attempts, int(max_failed_attempts)))
+                complete = True
 
     def _determine_crosslink_network(self, verbose):
         """Determine crosslinks between monolayer chains.
@@ -354,6 +354,25 @@ class CrosslinkedMonolayer(mb.Compound):
         self.add(hydroxyl, 'hydroxyl[$]')
         self.add_bond((node, oxygen))
 
+    def _get_voronoi_vertices(self):
+        pos = nx.get_node_attributes(self.crosslink_graph, 'pos')
+        pos = [val for val in pos.values()]
+        x_length = self.periodicity[0]
+        y_length = self.periodicity[1]
+        pos_images = []
+        for x_image in [-1, 0, 1]: 
+            for y_image in [-1, 0, 1]: 
+                for position in pos:
+                    new_position = [position[0] + x_length * x_image,
+                                    position[1] + y_length * y_image]
+                    pos_images.append(new_position) 
+        vor = Voronoi(pos_images)
+        vor_vertices = np.array([vertex for vertex in vor.vertices
+                                 if vertex[0] < self.periodicity[0]
+                                 and vertex[1] < self.periodicity[1]
+                                 and vertex[0] > 0.0 and vertex[1] > 0.0])
+        return vor_vertices
+
     def _find_closest_node(self, node, nodes, pos):
         dists = [self.min_periodic_distance(np.array([pos[node][0],pos[node][1],0.0]),
                  np.array([pos[a_node][0], pos[a_node][1], 0.0]))
@@ -423,7 +442,6 @@ class CrosslinkedMonolayer(mb.Compound):
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt 
-        from scipy.spatial import Voronoi, voronoi_plot_2d
         pos = nx.get_node_attributes(self.crosslink_graph, 'pos')
         pos = [val for val in pos.values()]
         x_length = self.periodicity[0]
