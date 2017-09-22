@@ -63,9 +63,9 @@ class CrosslinkedMonolayer(mb.Compound):
         The exact number of chains that should be chemisorbed to the surface.
         If `None`, which is the default, then the number of chemisorbed chains is
         determined from `spacing`.
-    max_n_chains : int, optional, default=None
-        The maximum number of total chains in the monolayer. If `None`, which is the
-        default, then the number of total chains is determined form `spacing`.
+    n_chains : int, optional, default=None
+        The number of total chains in the monolayer. If `None`, which is the
+        default, then the number of total chains is determined from `spacing`.
     seed : int, optional, default=12345
         Seed for the random number generator 
     chain_port_name : string, optional, default='down'
@@ -101,7 +101,7 @@ class CrosslinkedMonolayer(mb.Compound):
 
     """
     def __init__(self, chain, surface, spacing, backfill=None, n_chemisorbed=None,
-                 max_n_chains=None, seed=12345, chain_port_name='down',
+                 n_chains=None, seed=12345, chain_port_name='down',
                  backfill_port_name='down', verbose=False):
         super(CrosslinkedMonolayer, self).__init__()
 
@@ -119,26 +119,25 @@ class CrosslinkedMonolayer(mb.Compound):
         chain.add(chain['silicon']['down'], chain_port_name, containment=False,
             replace=True)
 
-        self._add_chemisorbed_chains(chain, spacing, n_chemisorbed, max_n_chains,
+        self._add_chemisorbed_chains(chain, spacing, n_chemisorbed, n_chains,
             chain_port_name, verbose)
-        self._add_crosslinked_chains(chain, spacing, max_n_chains, chain_port_name,
+        self._add_crosslinked_chains(chain, spacing, n_chains, chain_port_name,
             verbose)
         self._determine_crosslink_network(verbose)
         self._create_crosslinks()
         self._add_backfill(backfill, backfill_port_name)
 
-    def _add_chemisorbed_chains(self, chain, spacing, n_chemisorbed, max_n_chains,
+    def _add_chemisorbed_chains(self, chain, spacing, n_chemisorbed, n_chains,
                                 chain_port_name, verbose):
         """Attach chains to the surface...
         """
         available_sites = np.array(self['surface'].available_ports())
-        if n_chemisorbed and max_n_chains and max_n_chains < n_chemisorbed:
-            raise Exception('Cannot specify both `max_n_chains` less than '
-                            '`n_chemisorbed`!')
+        if n_chemisorbed and n_chains and n_chains < n_chemisorbed:
+            raise Exception('Cannot specify `n_chains` less than `n_chemisorbed`!')
         elif n_chemisorbed:
             max_chains = n_chemisorbed
-        elif max_n_chains:
-            max_chains = max_n_chains
+        elif n_chains:
+            max_chains = n_chains
         else:
             max_chains = len(available_sites)
         added_chains = 0
@@ -169,7 +168,7 @@ class CrosslinkedMonolayer(mb.Compound):
             warn('Only adding {} chemisorbed chains; however, additional sites are '
                  'available!'.format(n_chemisorbed))
 
-    def _add_crosslinked_chains(self, chain, spacing, max_n_chains, chain_port_name,
+    def _add_crosslinked_chains(self, chain, spacing, n_chains, chain_port_name,
                                 verbose):
         """Add crosslinked chains... """
         # Add hydroxyl to prototype for crosslinked chain
@@ -180,14 +179,9 @@ class CrosslinkedMonolayer(mb.Compound):
 
         surface_level = max(self['surface'].xyz[:,2])
 
-        total_chains = len(self['chemisorbed_chain'])
-        if max_n_chains:
-            max_chains = max_n_chains
-        else:
-            max_chains = 1e8
+        chains_in_monolayer = len(self['chemisorbed_chain'])
         complete = False
-        # Keep adding chains until too many consecutive failed attempts
-        while not complete and total_chains < max_chains:
+        while not complete:
             vertices = self._get_voronoi_vertices()
             
             # Determine locations of chains already in the monolayer
@@ -206,7 +200,13 @@ class CrosslinkedMonolayer(mb.Compound):
             for vertex in vertices:
                 min_dist = np.min([self.min_periodic_distance([vertex[0],vertex[1],0.0], loc) for loc in chain_locations])
                 dists.append(min_dist)
-            if np.max(dists) > spacing:
+            '''
+            Add crosslinked chain to monolayer if:
+                1. n_chains is specified and chains_in_monolayer < n_chains
+                2. n_chains is not specified and np.max(dists) > spacing
+            '''
+            if ((n_chains and chains_in_monolayer < n_chains) or
+                    (not n_chains and np.max(dists) > spacing)):
                 site_2d = vertices[np.argmax(dists)]
                 site = np.array([site_2d[0], site_2d[1], 0.0])
 
@@ -219,11 +219,16 @@ class CrosslinkedMonolayer(mb.Compound):
                 new_chain_si = list(new_chain.particles_by_name('Si'))[0]
                 self.crosslink_graph.add_node(new_chain_si, pos=(site[0], site[1]),
                     surface_bound=False)
-                total_chains = len(self['crosslinked_chain']) + \
+                chains_in_monolayer = len(self['crosslinked_chain']) + \
                     len(self['chemisorbed_chain'])
+                if np.max(dists) <= spacing:
+                    print('Added chain would be closer to a neighboring chain than '
+                          'the specified `spacing` ({}). Chain will be added to '
+                          'meet `n_chains` requirement.'.format(spacing))
                 if verbose:
                     print('Added crosslinked chain {} ({} total chains)'
-                          ''.format(len(self['crosslinked_chain']), total_chains))
+                          ''.format(len(self['crosslinked_chain']),
+                          chains_in_monolayer))
             else:
                 complete = True
 
@@ -235,7 +240,7 @@ class CrosslinkedMonolayer(mb.Compound):
         nodes = self.crosslink_graph.nodes()
         nodes.sort(key=lambda node: self.min_periodic_distance(np.zeros(3),
             np.array([pos[node][0], pos[node][1], 0.0])))
-        shuffle(nodes)
+        shuffle(nodes, lambda: random.random())
         for node in nodes:
             nodes_clone = nodes[:]
             if (not attachment[node] and
@@ -266,7 +271,20 @@ class CrosslinkedMonolayer(mb.Compound):
         '''
         all_connected = False
         while not all_connected:
-            networks = list(nx.connected_components(self.crosslink_graph))
+            networks_original = list(nx.connected_components(self.crosslink_graph))
+            # First sort all subgraphs
+            networks_sorted = []
+            for network in networks_original:
+                network = list(network)
+                network.sort(key=lambda atom: atom.pos[0])
+                networks_sorted.append(network)
+            networks_sorted.sort(key=lambda network: network[0].pos[0])
+            # Now randomize
+            networks = []
+            for network in networks_sorted:
+                shuffle(network)
+                networks.append(network)
+            shuffle(networks)
             if verbose:
                 print('Found {} total crosslinking networks'.format(len(networks)))
             if all(any(attachment[site] for site in list(network))
@@ -417,14 +435,14 @@ class CrosslinkedMonolayer(mb.Compound):
             if fake_point1 == point1:
                 plt.plot([point1[0], point2[0]], [point1[1], point2[1]],
                     marker='None', linestyle='-', color='black',
-                    linewidth=1.0)
+                    linewidth=2.0)
             else:
                 plt.plot([point1[0], fake_point2[0]], [point1[1], fake_point2[1]],
                     marker='None', linestyle='-', color='black',
-                    linewidth=1.0)
+                    linewidth=2.0)
                 plt.plot([point2[0], fake_point1[0]], [point2[1], fake_point1[1]],
                     marker='None', linestyle='-', color='black',
-                    linewidth=1.0)
+                    linewidth=2.0)
         plt.xlim(0.0, self.periodicity[0])
         plt.ylim(0.0, self.periodicity[1])
         plt.xlabel('x, nm', fontweight='bold', fontsize=20)
