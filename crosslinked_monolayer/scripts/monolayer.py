@@ -134,39 +134,58 @@ class CrosslinkedMonolayer(mb.Compound):
         available_sites = np.array(self['surface'].available_ports())
         if n_chemisorbed and n_chains and n_chains < n_chemisorbed:
             raise Exception('Cannot specify `n_chains` less than `n_chemisorbed`!')
-        elif n_chemisorbed:
-            max_chains = n_chemisorbed
-        elif n_chains:
-            max_chains = n_chains
-        else:
-            max_chains = len(available_sites)
+
         added_chains = 0
-        while len(available_sites) > 0 and added_chains < max_chains:
-            binding_site = random.choice(available_sites)
-            new_chain = mb.clone(chain)
-            self.crosslink_graph.add_node(new_chain.available_ports()[0].anchor,
-                pos=(binding_site.pos[0], binding_site.pos[1]),
-                surface_bound=True)
-            si = list(new_chain.particles_by_name('Si'))[0]
-            self.add(new_chain, 'chemisorbed_chain[$]')
-            mb.force_overlap(new_chain, new_chain[chain_port_name], binding_site)
-            available_sites = [site for site in available_sites
-                               if (site != binding_site and
-                               self.min_periodic_distance(np.array([site.pos[0],
-                               site.pos[1],0]), np.array([binding_site.pos[0],
-                               binding_site.pos[1],0])) > spacing)]
-            added_chains += 1
-            if verbose:
-                print('Added chemisorbed chain {}'
-                      ''.format(len(self['chemisorbed_chain'])))
-                print('{} available sites remaining'.format(len(available_sites)))
+        while len(available_sites) > 0:
+            if ((n_chemisorbed and added_chains == n_chemisorbed) or
+                    (n_chains and added_chains == n_chains)):
+                available_sites = []
+            else:
+                binding_site = random.choice(available_sites)
+                new_chain = mb.clone(chain)
+                self.crosslink_graph.add_node(new_chain.available_ports()[0].anchor,
+                    pos=(binding_site.pos[0], binding_site.pos[1]),
+                    surface_bound=True)
+                si = list(new_chain.particles_by_name('Si'))[0]
+                self.add(new_chain, 'chemisorbed_chain[$]')
+                mb.force_overlap(new_chain, new_chain[chain_port_name], binding_site)
+                available_sites = [site for site in available_sites
+                                   if (site != binding_site and
+                                   self.min_periodic_distance(np.array([site.pos[0],
+                                   site.pos[1],0]), np.array([binding_site.pos[0],
+                                   binding_site.pos[1],0])) > spacing)]
+                added_chains += 1
+                if verbose:
+                    print('Added chemisorbed chain {}'
+                          ''.format(len(self['chemisorbed_chain'])))
+                    print('{} available sites remaining'.format(len(available_sites)))
 
         if n_chemisorbed and added_chains < n_chemisorbed:
-            warn('Specified number of chemisorbed chains would cause steric '
-                 'overlap! Only adding {} chemisorbed chains.'.format(added_chains))
-        if len(available_sites) > 0:
-            warn('Only adding {} chemisorbed chains; however, additional sites are '
-                 'available!'.format(n_chemisorbed))
+            print('Maximum number of chemisorbed chains without overlaps has been '
+                  'reached! However, additional chains will be added to satisfy '
+                  'n_chemisorbed requirement.')
+            while added_chains < n_chemisorbed:
+                available_sites = np.array([site for site in
+                                            self['surface'].available_ports()])
+                chain_locations = np.array([chain.pos for chain
+                                            in self['chemisorbed_chain']])
+                chain_locations[:,2] = 0
+                min_dists = []
+                for site in available_sites:
+                    min_dist = np.min([self.min_periodic_distance([site.pos[0],site.pos[1],0.0], loc) for loc in chain_locations])
+                    min_dists.append(min_dist)
+                binding_site = available_sites[np.argmax(min_dists)]
+                new_chain = mb.clone(chain)
+                self.crosslink_graph.add_node(new_chain.available_ports()[0].anchor,
+                    pos=(binding_site.pos[0], binding_site.pos[1]),
+                    surface_bound=True)
+                si = list(new_chain.particles_by_name('Si'))[0]
+                self.add(new_chain, 'chemisorbed_chain[$]')
+                mb.force_overlap(new_chain, new_chain[chain_port_name], binding_site)
+                added_chains += 1
+                if verbose:
+                    print('Added chemisorbed chain {}'
+                          ''.format(len(self['chemisorbed_chain'])))
 
     def _add_crosslinked_chains(self, chain, spacing, n_chains, chain_port_name,
                                 verbose):
