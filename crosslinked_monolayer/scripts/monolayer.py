@@ -72,10 +72,6 @@ class CrosslinkedMonolayer(mb.Compound):
         Name of the port on `chain` to be used to create bonds to the surface
     backfill_port_name : string, optional, default='down'
         Name of the port on `backfill` to be used to create bonds to the surface
-    max_failed_attempts : int, optional, default=2.5e3
-        The number of consecutive failed insertion attempts for crosslinked chains
-        before the monolayer is considered "complete" (i.e. that no additional
-        locations exist where chains could be placed).
     verbose : bool, optional, default=False
         Create the monolayer in verbose mode, where additional information is
         outputted to the screen to inform the user of the status of monolayer
@@ -126,7 +122,7 @@ class CrosslinkedMonolayer(mb.Compound):
         self._add_chemisorbed_chains(chain, spacing, n_chemisorbed, max_n_chains,
             chain_port_name, verbose)
         self._add_crosslinked_chains(chain, spacing, max_n_chains, chain_port_name,
-            max_failed_attempts, verbose)
+            verbose)
         self._determine_crosslink_network(verbose)
         self._create_crosslinks()
         self._add_backfill(backfill, backfill_port_name)
@@ -174,7 +170,7 @@ class CrosslinkedMonolayer(mb.Compound):
                  'available!'.format(n_chemisorbed))
 
     def _add_crosslinked_chains(self, chain, spacing, max_n_chains, chain_port_name,
-                                max_failed_attempts, verbose):
+                                verbose):
         """Add crosslinked chains... """
         # Add hydroxyl to prototype for crosslinked chain
         chain.spin(np.pi/2, [1,0,0])
@@ -456,23 +452,3 @@ class CrosslinkedMonolayer(mb.Compound):
         vor = Voronoi(pos_images)
         voronoi_plot_2d(vor)
         self.draw_crosslink_network(filename)
-
-if __name__ == "__main__":
-    from mbuild.examples import Alkane
-    from mbuild.lib.atoms import H
-    from mbuild.lib.bulk_materials import AmorphousSilica
-    from mbuild.recipes import SilicaInterface
-
-    seed = 12345
-    surface = mb.SilicaInterface(bulk_silica=AmorphousSilica(),
-        thickness=1.2, seed=seed)
-    xlinked_monolayer = CrosslinkedMonolayer(Alkane(10, cap_end=False), surface,
-        0.42, backfill=H(), max_failed_attempts=2.5e3, verbose=True,
-        backfill_port_name='up', n_chemisorbed=25, max_n_chains=100)
-    xlinked_monolayer.draw_crosslink_network('test.pdf')
-
-    from crosslinked_monolayer import get_forcefield
-    xlinked_monolayer.save('test.top',
-                           forcefield_files=get_forcefield('oplsaa-xlink'),
-                           overwrite=True)
-    xlinked_monolayer.save('test.gro', overwrite=True)
