@@ -58,7 +58,7 @@
     <Angle class1="HC" class2="CT" class3="SI" angle="1.932079" k="313.80"/> <!--Needs verifying!-->
     <Angle class1="CT" class2="SI" class3="O" angle="1.745329252" k="502.08"/> <!--10.1007/s11249-005-5085-4-->
     <Angle class1="SI" class2="O" class3="HO" angle="2.144800211" k="198.961"/> <!--10.1007/s11249-005-5085-4-->
-    <Angle class1="SI" class2="O" class3="SI" angle="2.530727415" k="165.92"/> <!--10.1007/s11249-005-5085-4-->
+    <Angle class1="SI" class2="O" class3="SI" angle="2.530727415" k="167.36"/> <!--10.1007/s11249-005-5085-4-->
     <Angle class1="O" class2="SI" class3="O" angle="1.919862177" k="502.08"/> <!--10.1007/s11249-005-5085-4-->
  </HarmonicAngleForce>
  <RBTorsionForce>
